@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📒 Khata Index</title>
+    
+    <!-- Tailwind CSS for a modern, responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* A simple style for better visual feedback on buttons */
+        .btn-press:active {
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        
+        <!-- App Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl sm:text-4xl font-bold">📒 Khata Index</h1>
+        </header>
+
+        <main>
+            <!-- Form Card for Adding New Entries -->
+            <div class="bg-slate-800 p-6 rounded-xl shadow-lg mb-8">
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">Add New Entry</h2>
+                <form id="entry-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                        <input type="text" id="name" name="name" placeholder="e.g., John Doe" required class="w-full bg-slate-700 text-white rounded-md border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition px-3 py-2">
+                    </div>
+                    <div>
+                        <label for="page-number" class="block text-sm font-medium text-slate-300 mb-1">Page Number</label>
+                        <input type="number" id="page-number" name="page-number" placeholder="e.g., 121" required class="w-full bg-slate-700 text-white rounded-md border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition px-3 py-2">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 btn-press sm:col-span-1">Add Entry</button>
+                </form>
+            </div>
+
+            <!-- Entries List Card -->
+            <div class="bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                    <h2 class="text-xl font-semibold">All Entries</h2>
+                    <div class="w-full sm:w-auto flex gap-2">
+                        <input type="text" id="search-bar" placeholder="🔍 Search by name..." class="w-full sm:w-48 bg-slate-700 text-white rounded-md border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition px-3 py-2">
+                        <button id="export-pdf-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 btn-press whitespace-nowrap">Export PDF</button>
+                    </div>
+                </div>
+
+                <!-- Table to display entries -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left">
+                        <thead class="bg-slate-700">
+                            <tr>
+                                <th class="p-3 font-semibold text-sm w-1/6">Letter</th>
+                                <th class="p-3 font-semibold text-sm w-3/6">Name</th>
+                                <th class="p-3 font-semibold text-sm w-1/6">Page No.</th>
+                                <th class="p-3 font-semibold text-sm w-1/6 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entries-table-body" class="divide-y divide-slate-700">
+                           <!-- JS will populate this section -->
+                        </tbody>
+                    </table>
+                    <p id="no-entries-message" class="text-center text-slate-400 py-8 hidden">No entries found. Add one using the form above!</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 class="text-xl font-semibold mb-4">Edit Entry</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <div class="mb-4">
+                    <label for="edit-name" class="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                    <input type="text" id="edit-name" required class="w-full bg-slate-700 text-white rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label for="edit-page-number" class="block text-sm font-medium text-slate-300 mb-1">Page Number</label>
+                    <input type="number" id="edit-page-number" required class="w-full bg-slate-700 text-white rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancel-edit-btn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-md transition btn-press">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition btn-press">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h2 class="text-xl font-semibold mb-2">Are you sure?</h2>
+            <p class="text-slate-300 mb-6">This action cannot be undone.</p>
+            <div class="flex justify-center gap-3">
+                <button id="cancel-delete-btn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-md transition btn-press w-24">Cancel</button>
+                <button id="confirm-delete-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition btn-press w-24">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM ELEMENTS ---
+            const entryForm = document.getElementById('entry-form');
+            const nameInput = document.getElementById('name');
+            const pageNumberInput = document.getElementById('page-number');
+            const tableBody = document.getElementById('entries-table-body');
+            const searchBar = document.getElementById('search-bar');
+            const noEntriesMessage = document.getElementById('no-entries-message');
+            
+            // Edit Modal Elements
+            const editModal = document.getElementById('edit-modal');
+            const editForm = document.getElementById('edit-form');
+            const editIdInput = document.getElementById('edit-id');
+            const editNameInput = document.getElementById('edit-name');
+            const editPageNumberInput = document.getElementById('edit-page-number');
+            const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+            // Delete Modal Elements
+            const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+            const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+            // PDF Button
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
+
+            // --- STATE MANAGEMENT ---
+            let entries = [];
+            let entryToDeleteId = null;
+
+            // --- LOCAL STORAGE FUNCTIONS ---
+            const loadEntriesFromLocalStorage = () => {
+                const storedEntries = localStorage.getItem('khataIndexEntries');
+                return storedEntries ? JSON.parse(storedEntries) : [];
+            };
+
+            const saveEntriesToLocalStorage = (entriesToSave) => {
+                localStorage.setItem('khataIndexEntries', JSON.stringify(entriesToSave));
+            };
+
+            // --- RENDER FUNCTION ---
+            const renderTable = (entriesToRender) => {
+                tableBody.innerHTML = '';
+                if (entriesToRender.length === 0) {
+                    noEntriesMessage.classList.remove('hidden');
+                } else {
+                    noEntriesMessage.classList.add('hidden');
+                }
+
+                entriesToRender.forEach(entry => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-700/50 transition-colors';
+                    row.innerHTML = `
+                        <td class="p-3">${entry.letter}</td>
+                        <td class="p-3">${entry.name}</td>
+                        <td class="p-3">${entry.pageNumber}</td>
+                        <td class="p-3 text-center">
+                            <button class="edit-btn text-blue-400 hover:text-blue-300 p-1" data-id="${entry.id}" title="Edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
+                            </button>
+                            <button class="delete-btn text-red-400 hover:text-red-300 p-1" data-id="${entry.id}" title="Delete">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            };
+            
+            // --- CRUD FUNCTIONS ---
+            const addEntry = (name, pageNumber) => {
+                if (!name.trim()) return;
+                const newEntry = {
+                    id: Date.now().toString(),
+                    letter: name.trim().charAt(0).toUpperCase(),
+                    name: name.trim(),
+                    pageNumber: pageNumber
+                };
+                entries.unshift(newEntry); // Add to the beginning of the array
+                saveEntriesToLocalStorage(entries);
+                filterAndRender();
+            };
+            
+            const updateEntry = (id, newName, newPageNumber) => {
+                const entryIndex = entries.findIndex(entry => entry.id === id);
+                if (entryIndex > -1) {
+                    entries[entryIndex].name = newName.trim();
+                    entries[entryIndex].letter = newName.trim().charAt(0).toUpperCase();
+                    entries[entryIndex].pageNumber = newPageNumber;
+                    saveEntriesToLocalStorage(entries);
+                    filterAndRender();
+                }
+            };
+            
+            const deleteEntry = (id) => {
+                entries = entries.filter(entry => entry.id !== id);
+                saveEntriesToLocalStorage(entries);
+                filterAndRender();
+            };
+
+            // --- MODAL FUNCTIONS ---
+            const showEditModal = (id) => {
+                const entry = entries.find(e => e.id === id);
+                if (entry) {
+                    editIdInput.value = entry.id;
+                    editNameInput.value = entry.name;
+                    editPageNumberInput.value = entry.pageNumber;
+                    editModal.classList.remove('hidden');
+                    editNameInput.focus();
+                }
+            };
+
+            const hideEditModal = () => {
+                editModal.classList.add('hidden');
+            };
+            
+            const showDeleteModal = (id) => {
+                entryToDeleteId = id;
+                deleteConfirmModal.classList.remove('hidden');
+            };
+
+            const hideDeleteModal = () => {
+                entryToDeleteId = null;
+                deleteConfirmModal.classList.add('hidden');
+            };
+
+            // --- FILTER & RENDER ---
+            const filterAndRender = () => {
+                const searchTerm = searchBar.value.toLowerCase();
+                const filteredEntries = entries.filter(entry => 
+                    entry.name.toLowerCase().includes(searchTerm)
+                );
+                renderTable(filteredEntries);
+            };
+
+            // --- PDF GENERATION ---
+            const generatePDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                doc.setFontSize(20);
+                doc.text("📒 Khata Index", 14, 22);
+                
+                const tableData = entries.map(entry => [entry.letter, entry.name, entry.pageNumber]);
+
+                doc.autoTable({
+                    head: [['Letter', 'Name', 'Page Number']],
+                    body: tableData,
+                    startY: 30,
+                    theme: 'grid',
+                    headStyles: { fillColor: [75, 85, 99] }, // slate-600
+                });
+
+                doc.save('khata-index.pdf');
+            };
+
+
+            // --- EVENT LISTENERS ---
+            entryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                addEntry(nameInput.value, pageNumberInput.value);
+                entryForm.reset();
+                nameInput.focus();
+            });
+
+            searchBar.addEventListener('input', filterAndRender);
+            
+            tableBody.addEventListener('click', (e) => {
+                const editButton = e.target.closest('.edit-btn');
+                if (editButton) {
+                    showEditModal(editButton.dataset.id);
+                }
+                
+                const deleteButton = e.target.closest('.delete-btn');
+                if (deleteButton) {
+                    showDeleteModal(deleteButton.dataset.id);
+                }
+            });
+
+            // Edit Modal Listeners
+            editForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                updateEntry(editIdInput.value, editNameInput.value, editPageNumberInput.value);
+                hideEditModal();
+            });
+            cancelEditBtn.addEventListener('click', hideEditModal);
+            
+            // Delete Modal Listeners
+            confirmDeleteBtn.addEventListener('click', () => {
+                if (entryToDeleteId) {
+                    deleteEntry(entryToDeleteId);
+                }
+                hideDeleteModal();
+            });
+            cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+            
+            // PDF Button Listener
+            exportPdfBtn.addEventListener('click', generatePDF);
+
+
+            // --- INITIALIZATION ---
+            entries = loadEntriesFromLocalStorage();
+            filterAndRender();
+        });
+    </script>
+</body>
+</html>
