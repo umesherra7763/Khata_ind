@@ -32,6 +32,15 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #64748b; /* slate-500 */
         }
+        /* Style for sortable table headers */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        .sortable-header:hover {
+            background-color: #334155; /* slate-700 */
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-white font-sans antialiased">
@@ -73,11 +82,11 @@
                 <!-- Table to display entries -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left">
-                        <thead class="bg-slate-700">
+                        <thead class="bg-slate-700/50">
                             <tr>
                                 <th class="p-3 font-semibold text-sm w-1/6">Letter</th>
-                                <th class="p-3 font-semibold text-sm w-3/6">Name</th>
-                                <th class="p-3 font-semibold text-sm w-1/6">Page No.</th>
+                                <th id="sort-name-header" class="sortable-header p-3 font-semibold text-sm w-3/6">Name <span id="sort-name-indicator"></span></th>
+                                <th id="sort-page-header" class="sortable-header p-3 font-semibold text-sm w-1/6">Page No. <span id="sort-page-indicator"></span></th>
                                 <th class="p-3 font-semibold text-sm w-1/6 text-center">Actions</th>
                             </tr>
                         </thead>
@@ -151,9 +160,16 @@
             // PDF Button
             const exportPdfBtn = document.getElementById('export-pdf-btn');
 
+            // Sorting Elements
+            const sortNameHeader = document.getElementById('sort-name-header');
+            const sortPageHeader = document.getElementById('sort-page-header');
+            const sortNameIndicator = document.getElementById('sort-name-indicator');
+            const sortPageIndicator = document.getElementById('sort-page-indicator');
+
             // --- STATE MANAGEMENT ---
             let entries = [];
             let entryToDeleteId = null;
+            let sortState = { column: 'name', direction: 'asc' }; // Default sort
 
             // --- LOCAL STORAGE FUNCTIONS ---
             const loadEntriesFromLocalStorage = () => {
@@ -168,7 +184,7 @@
             // --- RENDER FUNCTION ---
             const renderTable = (entriesToRender) => {
                 tableBody.innerHTML = '';
-                if (entriesToRender.length === 0) {
+                if (entriesToRender.length === 0 && searchBar.value === '') {
                     noEntriesMessage.classList.remove('hidden');
                 } else {
                     noEntriesMessage.classList.add('hidden');
@@ -196,14 +212,14 @@
             
             // --- CRUD FUNCTIONS ---
             const addEntry = (name, pageNumber) => {
-                if (!name.trim()) return;
+                if (!name.trim() || !pageNumber) return;
                 const newEntry = {
                     id: Date.now().toString(),
                     letter: name.trim().charAt(0).toUpperCase(),
                     name: name.trim(),
-                    pageNumber: pageNumber
+                    pageNumber: parseInt(pageNumber, 10) // Ensure page number is stored as an integer
                 };
-                entries.unshift(newEntry); // Add to the beginning of the array
+                entries.push(newEntry);
                 saveEntriesToLocalStorage(entries);
                 filterAndRender();
             };
@@ -213,7 +229,7 @@
                 if (entryIndex > -1) {
                     entries[entryIndex].name = newName.trim();
                     entries[entryIndex].letter = newName.trim().charAt(0).toUpperCase();
-                    entries[entryIndex].pageNumber = newPageNumber;
+                    entries[entryIndex].pageNumber = parseInt(newPageNumber, 10);
                     saveEntriesToLocalStorage(entries);
                     filterAndRender();
                 }
@@ -251,13 +267,50 @@
                 deleteConfirmModal.classList.add('hidden');
             };
 
-            // --- FILTER & RENDER ---
+            // --- SORTING AND UI ---
+            const handleSort = (column) => {
+                if (sortState.column === column) {
+                    sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.column = column;
+                    sortState.direction = 'asc';
+                }
+                filterAndRender();
+            };
+
+            const updateSortIndicators = () => {
+                sortNameIndicator.textContent = '';
+                sortPageIndicator.textContent = '';
+                const indicator = sortState.direction === 'asc' ? ' ▲' : ' ▼';
+                if (sortState.column === 'name') {
+                    sortNameIndicator.textContent = indicator;
+                } else if (sortState.column === 'pageNumber') {
+                    sortPageIndicator.textContent = indicator;
+                }
+            };
+            
+            // --- FILTER, SORT, & RENDER ---
             const filterAndRender = () => {
+                // 1. Filter
                 const searchTerm = searchBar.value.toLowerCase();
                 const filteredEntries = entries.filter(entry => 
                     entry.name.toLowerCase().includes(searchTerm)
                 );
-                renderTable(filteredEntries);
+
+                // 2. Sort
+                const sortedEntries = [...filteredEntries].sort((a, b) => {
+                    const direction = sortState.direction === 'asc' ? 1 : -1;
+                    if (sortState.column === 'name') {
+                        return a.name.localeCompare(b.name) * direction;
+                    } else if (sortState.column === 'pageNumber') {
+                        return (a.pageNumber - b.pageNumber) * direction;
+                    }
+                    return 0;
+                });
+
+                // 3. Render
+                renderTable(sortedEntries);
+                updateSortIndicators();
             };
 
             // --- PDF GENERATION ---
@@ -268,7 +321,17 @@
                 doc.setFontSize(20);
                 doc.text("📒 Khata Index", 14, 22);
                 
-                const tableData = entries.map(entry => [entry.letter, entry.name, entry.pageNumber]);
+                // Get the currently filtered and sorted data for the PDF
+                const searchTerm = searchBar.value.toLowerCase();
+                const filtered = entries.filter(e => e.name.toLowerCase().includes(searchTerm));
+                const sorted = [...filtered].sort((a, b) => {
+                     const direction = sortState.direction === 'asc' ? 1 : -1;
+                     if (sortState.column === 'name') return a.name.localeCompare(b.name) * direction;
+                     if (sortState.column === 'pageNumber') return (a.pageNumber - b.pageNumber) * direction;
+                     return 0;
+                });
+                
+                const tableData = sorted.map(entry => [entry.letter, entry.name, entry.pageNumber]);
 
                 doc.autoTable({
                     head: [['Letter', 'Name', 'Page Number']],
@@ -323,12 +386,16 @@
             
             // PDF Button Listener
             exportPdfBtn.addEventListener('click', generatePDF);
-
+            
+            // Sorting Listeners
+            sortNameHeader.addEventListener('click', () => handleSort('name'));
+            sortPageHeader.addEventListener('click', () => handleSort('pageNumber'));
 
             // --- INITIALIZATION ---
             entries = loadEntriesFromLocalStorage();
-            filterAndRender();
+            filterAndRender(); // Initial render will apply the default sort
         });
     </script>
 </body>
 </html>
+
