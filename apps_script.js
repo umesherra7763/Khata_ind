@@ -55,15 +55,20 @@ function getSheet() {
 
 function getAllEntries() {
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return []; // only header row
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return []; // only header row or empty
 
-  return data.slice(1).map(row => ({
-    id:         String(row[0]),
-    letter:     String(row[1]),
-    name:       String(row[2]),
-    pageNumber: Number(row[3])
-  }));
+  // Read only the 4 data columns (A-D) to avoid stray empty columns
+  const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+  return data
+    .filter(row => String(row[2]).trim() !== '') // skip rows with no name
+    .map(row => ({
+      id:         String(row[0]),
+      letter:     String(row[1]),
+      name:       String(row[2]),
+      pageNumber: Number(row[3])
+    }));
 }
 
 function addEntry(data) {
