@@ -75,7 +75,21 @@ function addEntry(data) {
   const sheet = getSheet();
   const id = String(Date.now());
   const letter = data.name.trim().charAt(0).toUpperCase();
-  sheet.appendRow([id, letter, data.name.trim(), parseInt(data.pageNumber, 10)]);
+
+  // Find the true last row with data in column A (avoids gaps from empty/formatted rows)
+  const allRows = sheet.getRange(1, 1, sheet.getLastRow() || 1, 1).getValues();
+  let lastDataRow = 1; // default: at least the header row
+  for (let i = allRows.length - 1; i >= 0; i--) {
+    if (String(allRows[i][0]).trim() !== '') {
+      lastDataRow = i + 1;
+      break;
+    }
+  }
+
+  // Write directly to the next row after the last real data row
+  sheet.getRange(lastDataRow + 1, 1, 1, 4).setValues([
+    [id, letter, data.name.trim(), parseInt(data.pageNumber, 10)]
+  ]);
   return { success: true, id, letter };
 }
 
