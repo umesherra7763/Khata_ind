@@ -151,15 +151,14 @@
                     <table class="min-w-full text-left">
                         <thead class="bg-slate-700/50">
                             <tr>
-                                <th class="p-3 font-semibold text-sm w-1/12">Letter</th>
-                                <th class="p-3 font-semibold text-sm w-2/12 text-slate-400">ID</th>
-                                <th id="sort-name-header" class="sortable-header p-3 font-semibold text-sm w-4/12">
+                                <th class="p-3 font-semibold text-sm w-1/6">Letter</th>
+                                <th id="sort-name-header" class="sortable-header p-3 font-semibold text-sm w-3/6">
                                     Name <span id="sort-name-indicator"></span>
                                 </th>
-                                <th id="sort-page-header" class="sortable-header p-3 font-semibold text-sm w-2/12">
+                                <th id="sort-page-header" class="sortable-header p-3 font-semibold text-sm w-1/6">
                                     Page No. <span id="sort-page-indicator"></span>
                                 </th>
-                                <th class="p-3 font-semibold text-sm w-3/12 text-center">Actions</th>
+                                <th class="p-3 font-semibold text-sm w-1/6 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="entries-table-body" class="divide-y divide-slate-700">
@@ -404,7 +403,6 @@
                 row.className = 'hover:bg-slate-700/50 transition-colors';
                 row.innerHTML = `
                     <td class="p-3">${entry.letter}</td>
-                    <td class="p-3 text-slate-400 text-sm font-mono">${entry.id}</td>
                     <td class="p-3">${entry.name}</td>
                     <td class="p-3">${entry.pageNumber}</td>
                     <td class="p-3 text-center">
@@ -640,8 +638,8 @@
             });
 
             doc.autoTable({
-                head: [['Letter', 'ID', 'Name', 'Page Number']],
-                body: sorted.map(e => [e.letter, e.id, e.name, e.pageNumber]),
+                head: [['Letter', 'Name', 'Page Number']],
+                body: sorted.map(e => [e.letter, e.name, e.pageNumber]),
                 startY: 30,
                 theme:  'grid',
                 headStyles: { fillColor: [75, 85, 99] }
