@@ -429,8 +429,19 @@
         //  SORT + FILTER + RENDER PIPELINE
         // --------------------------------------------------------
         const filterAndRender = () => {
-            const term = searchBar.value.toLowerCase();
-            const filtered = entries.filter(e => e.name.toLowerCase().includes(term));
+            const term = searchBar.value.trim().toLowerCase();
+
+            const filtered = entries.filter(e => {
+                // Always skip empty names
+                if (!e.name || e.name.trim() === '') return false;
+                if (!term) return true;
+                const nameLower = e.name.trim().toLowerCase();
+                // Single letter → match names that START with that letter
+                if (term.length === 1) return nameLower.startsWith(term);
+                // Longer term → match anywhere in the name
+                return nameLower.includes(term);
+            });
+
             const dir = sortState.direction === 'asc' ? 1 : -1;
             const sorted = [...filtered].sort((a, b) => {
                 if (sortState.column === 'name')       return a.name.localeCompare(b.name) * dir;
@@ -660,7 +671,8 @@
             try {
                 const data = await apiGet();
                 if (!Array.isArray(data)) throw new Error('Bad response');
-                entries = data;
+                // Filter out any blank entries coming from the sheet
+                entries = data.filter(e => e.name && e.name.trim() !== '');
                 saveCache(entries);
                 setStatus(true);
             } catch (err) {
